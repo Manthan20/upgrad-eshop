@@ -1,5 +1,4 @@
 import { Fragment, useContext, useEffect, useState } from "react";
-import NavigationBar from "../../NavigationBar";
 import Select from "react-select";
 import { AuthContext } from "../../common/AuthContext";
 import {
@@ -11,13 +10,17 @@ import {
   Typography,
   TextField,
 } from "@mui/material";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import NavigationBar from "../navigationBar/NavigationBar";
+
+import "./Order.css";
 
 const steps = ["Items", "Select Address", "Confirm Order"];
 
 function Order() {
-  const { authToken, userId } = useContext(AuthContext);
+  const { authToken, userId, isAdmin } = useContext(AuthContext);
+  const navigate = useNavigate();
   const { state } = useLocation();
   const [activeStep, setActiveStep] = useState(0);
 
@@ -46,8 +49,8 @@ function Order() {
           {
             quantity: state.quantity,
             user: userId ?? "64982c40668e1d1dc3ed0ace",
-            product: state.name,
-            address: currentAddress.name,
+            product: state.id,
+            address: currentAddress.id,
           },
           {
             headers: {
@@ -56,11 +59,16 @@ function Order() {
           }
         )
         .then((response) => {
-          console.log(response.data);
+          alert("Order placed successfully");
+          navigate("/products");
         })
-        .catch((error) => console.error("Error fetching data:", error));
+        .catch((error) => console.error("Error placing order:", error));
     } else {
-      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      if (activeStep === 1 && currentAddress === undefined) {
+        alert("Please select an address!");
+      } else {
+        setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      }
     }
   };
 
@@ -114,10 +122,24 @@ function Order() {
             Authorization: `Bearer ${authToken}`,
           },
         })
-        .then((response) => {
-          console.log(response.data);
+        .then(() => {
+          alert("Success: Address is successfully saved.");
+          axios
+            .get(`http://localhost:8080/api/addresses`, {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            })
+            .then((response) => {
+              setAddressList(response.data);
+            })
+            .catch((error) => console.error("Error fetching data:", error));
         })
-        .catch((error) => console.error("Error fetching data:", error));
+        .catch(() =>
+          alert(
+            "Error: There was an issue in saving the address. Please provide correct details."
+          )
+        );
     }
   };
 
@@ -139,11 +161,7 @@ function Order() {
   }, [authToken]);
 
   const renderProductDetails = () => (
-    <div
-      style={{
-        padding: "10px 20px",
-      }}
-    >
+    <div className="productDetails">
       <Typography gutterBottom variant="h5" component="p">
         {state.name}
       </Typography>
@@ -174,8 +192,8 @@ function Order() {
 
   return authToken !== null ? (
     <div>
-      <NavigationBar isLogged={authToken !== null} />
-      <Box sx={{ width: "1200px", margin: "50px auto" }}>
+      <NavigationBar isLogged={authToken !== null} isAdmin={isAdmin} />
+      <Box className="orderContainer">
         <Stepper activeStep={activeStep}>
           {steps.map((label) => {
             const stepProps = {};
@@ -189,21 +207,8 @@ function Order() {
         </Stepper>
         <Fragment>
           {activeStep === 0 ? (
-            <div
-              style={{
-                width: "768px",
-                padding: "10px 20px",
-                margin: "50px auto",
-                height: "100%",
-                display: "flex",
-                gap: 2,
-              }}
-            >
-              <div
-                style={{
-                  padding: "10px 20px",
-                }}
-              >
+            <div className="stepContainer1">
+              <div>
                 <img
                   src={state.imageUrl}
                   alt={`${state.name}`}
@@ -214,21 +219,8 @@ function Order() {
               {renderProductDetails()}
             </div>
           ) : activeStep === 1 ? (
-            <div
-              style={{
-                width: "500px",
-                padding: "10px 20px",
-                margin: "50px auto",
-                height: "100%",
-                display: "flex",
-                gap: 2,
-              }}
-            >
-              <form
-                style={{
-                  width: "100%",
-                }}
-              >
+            <div className="stepContainer2">
+              <form>
                 <label>Select Address:</label>
                 <Select
                   className="basic-single"
@@ -239,19 +231,8 @@ function Order() {
                   options={addressList}
                   onChange={(data) => handleCurrentAddress(data)}
                 />
-                <p
-                  style={{
-                    margin: "30px 0",
-                    textAlign: "center",
-                  }}
-                >
-                  --OR--
-                </p>
-                <div
-                  style={{
-                    textAlign: "center",
-                  }}
-                >
+                <p className="orSeparator">--OR--</p>
+                <div className="center">
                   <Typography gutterBottom variant="h6" component="div">
                     Add Address
                   </Typography>
@@ -343,16 +324,7 @@ function Order() {
               </form>
             </div>
           ) : (
-            <div
-              style={{
-                width: "768px",
-                padding: "10px 20px",
-                margin: "50px auto",
-                height: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
+            <div className="stepContainer3">
               {renderProductDetails()}
               <div>
                 <Typography gutterBottom variant="h5" component="p">

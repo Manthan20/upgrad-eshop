@@ -1,8 +1,6 @@
-import { useContext, useEffect, useState } from "react";
-import NavigationBar from "../../NavigationBar";
+import { Fragment, useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../common/AuthContext";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { itemsList } from "../../common/mock";
 import {
   Button,
   Chip,
@@ -11,42 +9,56 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-// import axios from "axios";
+import axios from "axios";
+import NavigationBar from "../navigationBar/NavigationBar";
+
+import "./ProductDetail.css";
 
 function ProductDetail() {
-  const { authToken } = useContext(AuthContext);
+  const { authToken, isAdmin } = useContext(AuthContext);
   const navigate = useNavigate();
   const { id } = useParams();
   const [product, setProduct] = useState();
   const [quantity, setQuantity] = useState(1);
+  const [categoryList, setCategoryList] = useState([]);
 
   useEffect(() => {
-    // if (authToken !== null) {
-    //   axios
-    //     .get(`http://localhost:8080/api/products/${id}`, {
-    //       headers: {
-    //         Authorization: `Bearer ${authToken}`,
-    //       },
-    //     })
-    //     .then((response) => {
-    //       console.log(response.data);
-    //     })
-    //     .catch((error) => console.error("Error fetching data:", error));
-    // }
-    if (id) {
-      const item = itemsList.find((item) => String(item.id) === id);
-      setProduct(item);
+    if (authToken !== null) {
+      axios
+        .get("http://localhost:8080/api/products/categories", {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        })
+        .then(function (response) {
+          setCategoryList(response.data);
+        })
+        .catch(function () {
+          alert("Error: There was an issue in retrieving categories list.");
+        });
+      axios
+        .get(`http://localhost:8080/api/products/${id}`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        })
+        .then((response) => {
+          setProduct(response.data);
+        })
+        .catch(() =>
+          alert("Error: There was an issue in fetching the product details.")
+        );
     } else {
       navigate("/login");
     }
-  }, [id, authToken, navigate]);
+  }, [authToken, id, navigate]);
 
   return authToken ? (
     <div>
-      <NavigationBar isLogged={authToken !== null} />
+      <NavigationBar isLogged={authToken !== null} isAdmin={isAdmin} />
       {product ? (
-        <>
-          <div style={{ marginBottom: 30, marginTop: 30, textAlign: "center" }}>
+        <Fragment>
+          <div className="categorySection">
             <ToggleButtonGroup
               color="primary"
               value={product.category}
@@ -54,27 +66,18 @@ function ProductDetail() {
               disabled
               aria-label="Category"
             >
-              <ToggleButton value="all">ALL</ToggleButton>
-              <ToggleButton value="apparel">APPAREL</ToggleButton>
-              <ToggleButton value="electronics">ELECTRONICS</ToggleButton>
-              <ToggleButton value="personal-care">PERSONAL CARE</ToggleButton>
+              <ToggleButton key="all" value="all">
+                ALL
+              </ToggleButton>
+              {categoryList.map((category) => (
+                <ToggleButton key={category} value={category}>
+                  {category.toUpperCase()}
+                </ToggleButton>
+              ))}
             </ToggleButtonGroup>
           </div>
-          <div
-            style={{
-              width: "768px",
-              padding: "10px 20px",
-              margin: "50px auto",
-              height: "100%",
-              display: "flex",
-              gap: 2,
-            }}
-          >
-            <div
-              style={{
-                padding: "10px 20px",
-              }}
-            >
+          <div className="detailContainer">
+            <div className="child-divs">
               <img
                 src={product.imageUrl}
                 alt={`${product.name}`}
@@ -82,12 +85,8 @@ function ProductDetail() {
                 height={250}
               />
             </div>
-            <div
-              style={{
-                padding: "10px 20px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div className="child-divs">
+              <div className="nameContainer">
                 <Typography gutterBottom variant="h5" component="p">
                   {product.name}
                 </Typography>
@@ -133,6 +132,7 @@ function ProductDetail() {
                 variant="contained"
                 color="primary"
                 type="button"
+                disabled={!(quantity >= 1)}
                 sx={{ mt: 2 }}
                 onClick={() =>
                   navigate("/order", {
@@ -144,7 +144,7 @@ function ProductDetail() {
               </Button>
             </div>
           </div>
-        </>
+        </Fragment>
       ) : null}
     </div>
   ) : (
